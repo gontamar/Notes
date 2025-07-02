@@ -3,3 +3,39 @@ https://colab.research.google.com/drive/1tYCWd0OiK5c2Igx0SjaJ6p2rB-IcpNnU?usp=sh
 
 gradio
 https://colab.research.google.com/drive/1M_QzPmWzxcwczSfOK7L2CqU-xvchLMyo?usp=sharing#scrollTo=VIJIgU1vXs2L
+
+Here’s the flow of how your Car Price Predictor works, from entering car details in the interface to getting the predicted price:
+
+1. User Enters Car Details
+The user opens the web page and sees a form with dropdowns and input fields for:
+Company
+Model
+Year
+Fuel Type
+Kilometres Driven
+
+2. User Clicks "Predict Price"
+The user fills in the details and clicks the Predict Price button.
+
+3. JavaScript Handles the Button Click
+The send_data() JavaScript function is called.
+It prevents the default form submission.
+It collects the form data using FormData.
+It sends an AJAX POST request to the /predict endpoint with the form data.
+
+4. Flask Receives the Request
+The Flask backend receives the POST request at /predict.
+The predict() function extracts the form data (company, model, year, fuel type, kilometres driven).
+
+5. Model Makes Prediction
+The backend creates a DataFrame with the input values.
+The pre-trained machine learning model (LinearRegressionModel.pkl) predicts the car price using these inputs.
+
+6. Prediction Sent Back to Frontend
+The predicted price is returned as a response to the AJAX request.
+
+7. Frontend Displays the Result
+The JavaScript updates the page to show the predicted price in the <span id="prediction"></span> element.
+
+Summary:
+User fills form → clicks Predict → JavaScript sends data to Flask → Flask predicts price → result shown instantly on the page.
