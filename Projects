@@ -4,6 +4,8 @@ https://colab.research.google.com/drive/1tYCWd0OiK5c2Igx0SjaJ6p2rB-IcpNnU?usp=sh
 gradio
 https://colab.research.google.com/drive/1M_QzPmWzxcwczSfOK7L2CqU-xvchLMyo?usp=sharing#scrollTo=VIJIgU1vXs2L
 
+--------------------------------------------------------------------------------------------------------------------------------------------
+
 Here’s the flow of how your Car Price Predictor works, from entering car details in the interface to getting the predicted price:
 
 1. User Enters Car Details
@@ -39,3 +41,96 @@ The JavaScript updates the page to show the predicted price in the <span id="pre
 
 Summary:
 User fills form → clicks Predict → JavaScript sends data to Flask → Flask predicts price → result shown instantly on the page.
+
+
+-----------------------------------------------------------------------------------------------------------------------------------------------
+
+The working flow from user input to output in **XrayGPT** can be summarized as follows, based on the model documentation, code flow explanations, and architecture notes found in the repository:
+
+---
+
+### **1. User Input**
+
+- **Input Types:**  
+  - **Image Input:** (e.g., chest X-ray images)
+  - **Text Input:** (e.g., medical questions, prompts, or captions)
+
+---
+
+### **2. Preprocessing**
+
+- **Image Preprocessing:**  
+  - Images are processed using vision-specific transforms (resize, normalization, etc.).
+  - This is handled by the visual processors, configured in YAML and loaded via `load_preprocess()` (see `xraygpt/models/__init__.py`).
+
+- **Text Preprocessing:**  
+  - Text is tokenized using a tokenizer (typically `LlamaTokenizer` or HuggingFace's AutoTokenizer).
+  - Converts text to input tokens suitable for the language model.
+
+---
+
+### **3. Encoding**
+
+- **Image Encoding:**  
+  - The image is passed through an **EVA Vision Transformer (ViT)** (`eva_vit.py`).
+    - **PatchEmbed:** Splits the image into patches, projects them into embeddings.
+    - **VisionTransformer:** Processes patch embeddings through transformer layers to produce visual feature embeddings.
+
+- **Text Encoding:**  
+  - Text tokens are embedded and prepared for multimodal fusion.
+
+---
+
+### **4. Multimodal Fusion (Q-Former)**
+
+- **Q-Former (`Qformer.py`):**  
+  - **Learnable Query Embeddings** interact with both visual and textual features.
+  - Query tokens are processed through transformer layers with cross-attention to image features.
+  - The Q-Former fuses the information from image and text, creating a unified representation.
+
+---
+
+### **5. Language Model Decoding**
+
+- **LLaMA Language Model (`modeling_llama.py`):**  
+  - The fused multimodal representations are passed to a large language model (LLM, such as LLaMA).
+  - The LLM decodes the information to generate output text (e.g., a summary or report).
+
+---
+
+### **6. Postprocessing**
+
+- **Text outputs** are decoded from tokens back to human-readable text using the tokenizer.
+
+- **Results** (summarization or answers) are returned to the user via the application interface (e.g., Gradio demo in `demo.py`).
+
+---
+
+### **Summary Table of Main Model Files**
+
+| File                    | Purpose                                  |
+|-------------------------|------------------------------------------|
+| tokenization_llama.py   | Text tokenization                        |
+| eva_vit.py              | Image encoding (ViT)                     |
+| Qformer.py              | Multimodal encoding/fusion               |
+| modeling_llama.py       | Language model decoding (LLaMA)          |
+
+---
+
+### **High-Level Flow Diagram**
+
+1. **User Uploads Image and/or Text →**
+2. **Preprocessing (Image & Text) →**
+3. **Image → EVA ViT → Visual Embeddings**
+4. **Text → Tokenizer → Text Embeddings**
+5. **Fusion: Q-Former (cross-attention between queries, image, and text) →**
+6. **Fused Representation → LLaMA LLM → Output Tokens**
+7. **Postprocessing → Final Text Output**
+
+---
+
+For more detail, see:
+- The architecture image in the [README](https://github.com/gontamar/XrayGPT/blob/main/README.md) (`images/Overall_architecture_V3.gif`)
+- Code flow explanations in `xraygpt/models/Qformer.md`, `xraygpt/models/models.txt`, and `xraygpt/models/code_flow_eva_vit.md`.
+
+If you need a more granular, line-level walk-through, specify which model file or class you want detailed!
