@@ -134,3 +134,187 @@ For more detail, see:
 - Code flow explanations in `xraygpt/models/Qformer.md`, `xraygpt/models/models.txt`, and `xraygpt/models/code_flow_eva_vit.md`.
 
 If you need a more granular, line-level walk-through, specify which model file or class you want detailed!
+
+Here’s an in-depth flow of XrayGPT from user input to output, synthesizing the code, model architecture, and component interactions:
+
+---
+
+## **1. User Input**
+
+- **User provides:**
+  - An X-ray image (typically as a file upload).
+  - An optional text prompt or question (e.g., “Summarize findings”).
+- **Interface:**  
+  - The demo uses a Gradio UI (`demo.py`) for collecting these inputs.
+
+---
+
+## **2. Preprocessing**
+
+- **Image Preprocessing:**
+  - The image is processed and normalized to fit the requirements of the vision encoder (EVA ViT).  
+  - This involves resizing, normalization, and conversion to tensor format.
+  - The function `load_preprocess` (in `xraygpt/models/__init__.py`) loads preprocessing configs for both image and text.
+
+- **Text Preprocessing:**
+  - The textual input is tokenized using LlamaTokenizer or similar (`tokenization_llama.py`).
+  - Converts text to integer tokens for the language model.
+
+---
+
+## **3. Feature Encoding**
+
+### **A. Vision Encoding**
+
+- **File:** `eva_vit.py` ([see code flow](xraygpt/models/code_flow_eva_vit.md))
+- **Process:**
+  - The image is split into patches (`PatchEmbed`), embedded, position embeddings are added.
+  - Passed through several Transformer blocks (`Block`), each with attention and MLP layers.
+  - Results in a sequence of visual feature embeddings.
+
+### **B. Text Encoding**
+
+- **File:** `Qformer.py`, `tokenization_llama.py`
+- **Process:**
+  - Text tokens are embedded (`BertEmbeddings`).
+  - Position embeddings and learnable query embeddings are added as needed.
+
+---
+
+## **4. Multimodal Fusion (Q-Former)**
+
+- **File:** `Qformer.py` ([see summary](xraygpt/models/Qformer_overall.txt), [detailed flow](xraygpt/models/Qformer.md))
+- **Query Expansion:**  
+  - Learnable queries are expanded to match the batch size.
+- **Attention:**  
+  - These queries attend to both visual and textual embeddings using Transformer encoder layers (self/cross-attention).
+- **Output:**  
+  - The Q-Former outputs query representations that capture both the image and text context for downstream tasks.
+
+---
+
+## **5. Language Generation (LLM Head)**
+
+- **File:** `modeling_llama.py`, `mini_gpt4.py`
+- **Process:**
+  - The fused multimodal representations from Q-Former are projected (if needed) and passed to the LLaMA language model.
+  - The LLM generates the output text (summary or answer) based on the combined visual and textual information.
+
+---
+
+## **6. Output Postprocessing**
+
+- **Detokenization:**  
+  - The generated tokens are converted back to natural language text using the tokenizer.
+- **Display:**  
+  - The output text is shown in the Gradio interface as the summary/report/answer.
+
+---
+
+## **7. Summary Table of Key Modules**
+
+| Step              | File/Module           | Purpose                                                    |
+|-------------------|----------------------|------------------------------------------------------------|
+| Tokenization      | tokenization_llama.py | Text tokenization for LLaMA                                |
+| Vision Encoding   | eva_vit.py           | Image encoding via Vision Transformer                      |
+| Multimodal Fusion | Qformer.py           | Query-based fusion of visual and textual features          |
+| Language Model    | modeling_llama.py / mini_gpt4.py | Generates final natural language output         |
+
+---
+
+## **Visual Overview**
+
+A diagram (`images/Overall_architecture_V3.gif`) in the README illustrates this pipeline.
+
+---
+
+## **References**
+
+- [README.md: About XrayGPT](https://github.com/gontamar/XrayGPT#about-xraygpt)
+- [README.md: Demo instructions](https://github.com/gontamar/XrayGPT#launching-demo-on-local-machine)
+- [Qformer overall flow](https://github.com/gontamar/XrayGPT/blob/main/xraygpt/models/Qformer_overall.txt)
+- [EVA ViT code flow](https://github.com/gontamar/XrayGPT/blob/main/xraygpt/models/code_flow_eva_vit.md)
+- [Qformer line-by-line flow](https://github.com/gontamar/XrayGPT/blob/main/xraygpt/models/Qformer.md)
+
+---
+
+**In summary:**  
+XrayGPT takes an X-ray image and a question, preprocesses both, encodes the image (with ViT) and text (with tokenizer), fuses them (Q-Former), then generates a summary or answer using a fine-tuned LLM (LLaMA), and returns the output to the user. If you want a code-level walk-through of a particular file or method, let me know!
+
+------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+The working flow from user input to output for MedCLIP is based on the CLIP (Contrastive Language–Image Pretraining) architecture, adapted for medical imaging. Here’s an in-depth breakdown:
+
+---
+
+### 1. **Input Stage**
+- **User Input:** The user provides either an image (such as a medical scan) or a textual caption/diagnosis.
+- **Supported Tasks:**
+  - *Captioning*: Generate a caption for a given medical image.
+  - *Image Search*: Retrieve the most relevant image(s) given a text/caption.
+
+---
+
+### 2. **Encoding Stage**
+- **Image Encoder:** Images are encoded using a deep convolutional neural network, specifically ResNet50.
+- **Text Encoder:** Captions or diagnostic texts are encoded using ClinicalBERT, a BERT model fine-tuned for clinical text.
+
+Both encoders produce vector representations (“tensors”) of their respective inputs.
+
+---
+
+### 3. **Similarity Computation**
+- The encoded image and text vectors are compared using a similarity metric—typically, the softmax of the dot product between vectors.
+- This allows the model to measure how closely a caption and an image “match” in the learned embedding space.
+
+---
+
+### 4. **Training (Contrastive Pretraining)**
+- During training, the model optimizes the encoders so that related image-text pairs have similar vector representations.
+- The loss is minimized when the encoded representations of matching pairs (image and caption that describe the same case) are as close as possible; non-matching pairs are pushed apart.
+
+---
+
+### 5. **Inference / Querying (Zero-shot)**
+1. **Take an Input:** The user provides a new image or caption.
+2. **Encode:** The input is transformed using the trained encoders.
+3. **Search for Match:**
+   - For *captioning*: Find the most similar text (caption) among a set of known captions for the given image.
+   - For *image search*: Find the most similar image for a given caption.
+   - This is done by iterating through the dataset, encoding each entry, and computing the similarity score with the input.
+4. **Output:** Return the image-caption pairs with the highest similarity.
+
+Optionally, the similarity between the real caption and the guessed one can be measured using metrics like ROUGE, BLEU, METEOR, and CIDEr.
+
+---
+
+### 6. **Tools and Datasets**
+- **Datasets Used:** MedPix, IU Chest X-Ray, ChestX-Ray 14, CheXpert, MIMIC-CXR, PadChest, ICLEF Caption, and more.
+- **Preprocessing:** Scripts are provided to scrape, clean, and prepare datasets (see the `data/` directory).
+
+---
+
+### 7. **Usage**
+- The main workflow is encapsulated in `main.ipynb`, which can be run on Google Colab.
+- Pretrained weights are available, so retraining is not necessary for inference.
+
+---
+
+#### **Summary Diagram (from README)**
+1. Input (image or text)
+2. Encode with ResNet50 (images) and ClinicalBERT (text)
+3. Compare encodings for similarity
+4. Retrieve/output the best match (caption or image)
+
+---
+
+**In essence:**  
+MedCLIP takes a user-provided image or caption, encodes it into a high-dimensional space using domain-specific encoders, and compares it to a dataset of image-caption pairs to find the most semantically similar output.
+
+---
+
+*References:*
+- [MedCLIP README Explanation Section](https://github.com/Mauville/MedCLIP/blob/1b07d3d37693f38895f3ba39057254124b0aa841/README.adoc#L35-L52)
+- [MedCLIP Usage and Introduction](https://github.com/Mauville/MedCLIP/blob/1b07d3d37693f38895f3ba39057254124b0aa841/README.adoc#L1-L33)
+- [Loss and Tools Used](https://github.com/Mauville/MedCLIP/blob/1b07d3d37693f38895f3ba39057254124b0aa841/README.adoc#L53-L76)
